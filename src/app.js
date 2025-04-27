@@ -10,6 +10,41 @@ class ExcelTableManager {
     this.downloadBtn.addEventListener('click', () => this.downloadFile());
   }
 
+  validateTableData(data) {
+    const types = ['date', 'string', 'string', 'string', 'number', 'number'];
+    const validators = {
+      date: value => {
+
+        if (value instanceof Date) return true;
+        if (typeof value === 'string') {
+          return /^\d{4}-\d{2}-\d{2}$/.test(value);
+        }
+        return false;
+      },
+      string: value => typeof value === 'string',
+      number: value => typeof value === 'number' && !isNaN(value),
+    };
+    const keys = Object.keys(data[0] || {});
+    data.forEach(row => {
+
+      const firstKey = keys[0];
+      const val = row[firstKey];
+      if (typeof val === 'number') {
+
+        const jsDate = new Date((val - 25569) * 86400 * 1000);
+        row[firstKey] = jsDate.toISOString().slice(0, 10);
+      }
+      row._invalidFields = {};
+      keys.forEach((key, idx) => {
+        const type = types[idx];
+        const validator = validators[type];
+        if (validator && !validator(row[key])) {
+          row._invalidFields[key] = true;
+        }
+      });
+    });
+  }
+
   handleFile(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -27,13 +62,14 @@ class ExcelTableManager {
       }
 
       this.originalData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-      console.table(this.originalData);
       this.renderTable(this.originalData);
     };
     reader.readAsArrayBuffer(file);
   }
 
   renderTable(data) {
+    this.validateTableData(data);
+
     if (this.table) {
       this.table.destroy();
     }
@@ -52,21 +88,25 @@ class ExcelTableManager {
     setTimeout(() => {
       this.table.getRows().forEach(row => {
         row.getCells().forEach(cell => {
-          // Здесь можно добавить обработку ячеек
         });
       });
     }, 0);
   }
 
   generateColumns(data) {
-    const keys = Object.keys(data[0] || {});
+    const keys = Object.keys(data[0] || {}).filter(key => key !== '_invalidFields');
     return keys.map(key => ({
       title: key,
       field: key,
       editor: "input",
-      cellFormatter: function(cell) {
-        let value = cell.getValue();
-        return value === undefined || value === null ? '' : String(value);
+      formatter: function(cell) {
+        const value = cell.getValue();
+        const row = cell.getRow().getData();
+        const invalid = row._invalidFields && row._invalidFields[key];
+        const display = value == null ? '' : String(value);
+        return invalid
+          ? `<span class="invalid-cell">${display}</span>`
+          : display;
       }
     }));
   }
@@ -82,7 +122,6 @@ class ExcelTableManager {
   }
 }
 
-// Инициализация менеджера таблицы после загрузки страницы
 document.addEventListener('DOMContentLoaded', () => {
   new ExcelTableManager('fileInput', 'downloadBtn', 'table');
 });

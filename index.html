@@ -10,7 +10,21 @@
         body { font-family: Arial, sans-serif; margin: 20px; }
         #fileInput { margin-bottom: 20px; }
         #downloadBtn { margin-top: 20px; }
-        .highlight { background-color: #ffcccc; }
+
+        /* Brighter highlight for invalid cells */
+        .invalid-cell {
+          background-color: #ff4d4f !important;
+          color: #ffffff;
+          font-weight: bold;
+          padding: 2px;
+        }
+
+        /* Shrink table to its content and center it */
+        #table, .tabulator {
+          display: inline-block;
+          margin: 20px auto;
+          width: auto !important;
+        }
 	</style>
 
 </head>
